@@ -22,13 +22,14 @@ It supports many filetypes, including:
     among others. See https://github.com/sk-/git-lint for the complete list.
 
 Usage:
-    git-lint [-f | --force] [--json] [--last-commit] [FILENAME ...]
-    git-lint [-t | --tracked] [-f | --force] [--json] [--last-commit]
-    git-lint -h | --version
+    git-lint [-f|--force] [--no-color] [--json] [--last-commit] [FILENAME ...]
+    git-lint [-t|--tracked] [-f|--force] [--no-color] [--json] [--last-commit]
+    git-lint -h|--version
 
 Options:
     -h             Show the usage patterns.
     --version      Prints the version number.
+    --no-color     Disable colored output.
     -f --force     Shows all the lines with problems.
     -t --tracked   Lints only tracked files.
     --json         Prints the result as a json string. Useful to use it in
@@ -56,10 +57,6 @@ import gitlint.git as git
 import gitlint.hg as hg
 import gitlint.linters as linters
 from gitlint.version import __VERSION__
-
-ERROR = termcolor.colored('ERROR', 'red', attrs=('bold', ))
-SKIPPED = termcolor.colored('SKIPPED', 'yellow', attrs=('bold', ))
-OK = termcolor.colored('OK', 'green', attrs=('bold', ))
 
 
 def find_invalid_filenames(filenames, repository_root):
@@ -202,6 +199,16 @@ def main(argv, stdout=sys.stdout, stderr=sys.stderr):
 
     vcs, repository_root = get_vcs_root()
 
+    error = 'ERROR'
+    skipped = 'SKIPPED'
+    okay = 'OK'
+
+    color = not arguments['--no-color'] and sys.stdout.isatty()
+    if color:
+        error = termcolor.colored(error, 'red', attrs=('bold', ))
+        skipped = termcolor.colored(skipped, 'yellow', attrs=('bold', ))
+        okay = termcolor.colored(okay, 'green', attrs=('bold', ))
+
     if vcs is None:
         stderr.write('fatal: Not a git repository' + linesep)
         return 128
@@ -250,20 +257,22 @@ def main(argv, stdout=sys.stdout, stderr=sys.stderr):
             rel_filename = os.path.relpath(filename)
 
             if not json_output:
-                stdout.write('Linting file: %s%s' % (termcolor.colored(
-                    rel_filename, attrs=('bold', )), linesep))
+                filename = rel_filename
+                if color:
+                    filename = termcolor.colored(filename, attrs=('bold', ))
+                stdout.write('Linting file: %s%s' % (filename, linesep))
 
             output_lines = []
             if result.get('error'):
-                output_lines.extend('%s: %s' % (ERROR, reason)
+                output_lines.extend('%s: %s' % (error, reason)
                                     for reason in result.get('error'))
                 linter_not_found = True
             if result.get('skipped'):
-                output_lines.extend('%s: %s' % (SKIPPED, reason)
+                output_lines.extend('%s: %s' % (skipped, reason)
                                     for reason in result.get('skipped'))
             if not result.get('comments', []):
                 if not output_lines:
-                    output_lines.append(OK)
+                    output_lines.append(okay)
             else:
                 files_with_problems += 1
                 for data in result['comments']:

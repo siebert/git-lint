@@ -255,8 +255,7 @@ TODOS and Possible Features
   folder linters.
 * Decide what linter to use based on the whole filename or even in the filetype,
   as returned by the command file.
-* Provide better options for colorizing the output, and maybe a way to disable
-  it. Also detect if colors are supported or if it is a tty.
+* Provide better options for colorizing the output.
 * Add support for more version control systems (svn, perforce). This should be
   easy, it's just a matter of implementing the functions defined in
   gitlint/git.py or gitlint/hg.py.

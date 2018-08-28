@@ -438,10 +438,10 @@ class GitLintTest(fake_filesystem_unittest.TestCase):
                     stdout=self.stdout,
                     stderr=None))
             expected_output = os.linesep.join([
-                '\x1b[1m\x1b[31mERROR\x1b[0m: error1',
-                '\x1b[1m\x1b[31mERROR\x1b[0m: error2',
-                '\x1b[1m\x1b[33mSKIPPED\x1b[0m: skipped1',
-                '\x1b[1m\x1b[33mSKIPPED\x1b[0m: skipped2',
+                'ERROR: error1',
+                'ERROR: error2',
+                'SKIPPED: skipped1',
+                'SKIPPED: skipped2',
                 'msg1',
                 'msg2',
             ])
