@@ -13,6 +13,7 @@
 # limitations under the License.
 """Common function used across modules."""
 
+import hashlib
 import io
 import os
 import re
@@ -72,16 +73,34 @@ def _open_for_write(filename):
     return io.open(filename, 'w')
 
 
-def _get_cache_filename(name, filename):
-    """Returns the cache location for filename and linter name."""
+def _get_cache_filename(name, linter_hash, filename):
+    """Returns the cache location for filename and linter name and hash."""
     filename = os.path.abspath(filename)[1:]
+    linter_dir = "%s.%s" % (name, linter_hash)
     home_folder = os.path.expanduser('~')
     base_cache_dir = os.path.join(home_folder, '.git-lint', 'cache')
 
-    return os.path.join(base_cache_dir, name, filename)
+    return os.path.join(base_cache_dir, linter_dir, filename)
 
 
-def get_output_from_cache(name, filename):
+def calculate_hash(program, arguments):
+    """Calculate sha256 hash as hex string over program and arguments.
+
+    Args:
+      program: string: lint program.
+      arguments: list[string]: extra arguments for the program.
+
+    Returns: string: a string with the calculated sha256 hex value.
+    """
+    algorithm = hashlib.sha256()
+    algorithm.update(program.encode('utf-8'))
+    for argument in arguments:
+        algorithm.update("|".encode('utf-8'))
+        algorithm.update(argument.encode('utf-8'))
+    return algorithm.hexdigest()
+
+
+def get_output_from_cache(name, linter_hash, filename):
     """Returns the output from the cache if still valid.
 
     It checks that the cache file is defined and that its modification time is
@@ -89,12 +108,13 @@ def get_output_from_cache(name, filename):
 
     Args:
       name: string: name of the linter.
+      linter_hash: string: hash representing linter binary and arguments.
       filename: string: path of the filename for which we are retrieving the
         output.
 
     Returns: a string with the output, if it is still valid, or None otherwise.
     """
-    cache_filename = _get_cache_filename(name, filename)
+    cache_filename = _get_cache_filename(name, linter_hash, filename)
     if (os.path.exists(cache_filename)
             and os.path.getmtime(filename) < os.path.getmtime(cache_filename)):
         with io.open(cache_filename) as f:
@@ -103,14 +123,15 @@ def get_output_from_cache(name, filename):
     return None
 
 
-def save_output_in_cache(name, filename, output):
+def save_output_in_cache(name, linter_hash, filename, output):
     """Saves output in the cache location.
 
     Args:
       name: string: name of the linter.
+      linter_hash: string: hash representing linter binary and arguments.
       filename: string: path of the filename for which we are saving the output.
       output: string: full output (not yet filetered) of the lint command.
     """
-    cache_filename = _get_cache_filename(name, filename)
+    cache_filename = _get_cache_filename(name, linter_hash, filename)
     with _open_for_write(cache_filename) as f:
         f.write(output)

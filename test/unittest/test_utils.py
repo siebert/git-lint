@@ -91,60 +91,74 @@ class UtilsTest(fake_filesystem_unittest.TestCase):
     def test_get_cache_filename(self):
         self.fs.create_dir('/abspath')
         os.chdir('/abspath')
+        dummy_hash = utils.calculate_hash("some_tool", [])
         with mock.patch('os.path.expanduser', return_value='/home/user'):
             self.assertEqual(
-                '/home/user/.git-lint/cache/linter1/abspath/bar/file.txt',
-                utils._get_cache_filename('linter1', 'bar/file.txt'))
+                '/home/user/.git-lint/cache/linter1.%s/abspath/bar/file.txt' %
+                dummy_hash,
+                utils._get_cache_filename('linter1', dummy_hash,
+                                          'bar/file.txt'))
 
             self.assertEqual(
-                '/home/user/.git-lint/cache/linter2/abspath/file.txt',
-                utils._get_cache_filename('linter2', 'file.txt'))
+                '/home/user/.git-lint/cache/linter2.%s/abspath/file.txt' %
+                dummy_hash,
+                utils._get_cache_filename('linter2', dummy_hash, 'file.txt'))
 
             self.assertEqual(
-                '/home/user/.git-lint/cache/linter3/bar/file.txt',
-                utils._get_cache_filename('linter3', '/bar/file.txt'))
+                '/home/user/.git-lint/cache/linter3.%s/bar/file.txt' %
+                dummy_hash,
+                utils._get_cache_filename('linter3', dummy_hash,
+                                          '/bar/file.txt'))
 
     @unittest.skipUnless(sys.version_info >= (3, 5),
                          'pyfakefs does not support pathlib2. See'
                          'https://github.com/jmcgeheeiv/pyfakefs/issues/408')
     def test_save_output_in_cache(self):
+        dummy_hash = utils.calculate_hash("some_tool", [])
         output = 'Some content'
         with mock.patch(
                 'gitlint.utils._get_cache_filename',
-                return_value='/cache/filename.txt'):
-            utils.save_output_in_cache('linter', 'filename', output)
+                return_value='/cache/linter.%s/filename.txt' % dummy_hash):
+            utils.save_output_in_cache('linter', dummy_hash, 'filename',
+                                       output)
 
-            with open(utils._get_cache_filename('linter', 'filename')) as f:
+            with open(
+                    utils._get_cache_filename('linter', dummy_hash,
+                                              'filename')) as f:
                 self.assertEqual(output, f.read())
 
     def test_get_output_from_cache_no_cache(self):
-        cache_filename = '/cache/filename.txt'
+        dummy_hash = utils.calculate_hash("some_tool", [])
+        cache_filename = '/cache/linter.%s/filename.txt' % dummy_hash
         with mock.patch(
                 'gitlint.utils._get_cache_filename',
                 return_value=cache_filename):
             self.assertIsNone(
-                utils.get_output_from_cache('linter', 'filename'))
+                utils.get_output_from_cache('linter', dummy_hash, 'filename'))
 
     def test_get_output_from_cache_cache_is_expired(self):
-        cache_filename = '/cache/filename.txt'
+        dummy_hash = utils.calculate_hash("some_tool", [])
+        cache_filename = '/cache/linter.%s/filename.txt' % dummy_hash
         self.fs.create_file(cache_filename)
         self.fs.create_file('filename')
         with mock.patch(
                 'gitlint.utils._get_cache_filename',
                 return_value=cache_filename):
             self.assertIsNone(
-                utils.get_output_from_cache('linter', 'filename'))
+                utils.get_output_from_cache('linter', dummy_hash, 'filename'))
 
     def test_get_output_from_cache_cache_is_valid(self):
-        cache_filename = '/cache/filename.txt'
+        dummy_hash = utils.calculate_hash("some_tool", [])
+        cache_filename = '/cache/linter.%s/filename.txt' % dummy_hash
         content = 'some_content'
         self.fs.create_file('filename')
         self.fs.create_file(cache_filename, contents=content)
         with mock.patch(
                 'gitlint.utils._get_cache_filename',
                 return_value=cache_filename):
-            self.assertEqual(content,
-                             utils.get_output_from_cache('linter', 'filename'))
+            self.assertEqual(
+                content,
+                utils.get_output_from_cache('linter', dummy_hash, 'filename'))
 
     def test_which_absolute_path(self):
         filename = '/foo/bar.sh'
