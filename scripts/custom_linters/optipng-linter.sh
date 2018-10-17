@@ -13,20 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 function get_size {
-    LS_OUTPUT=($(ls -n $1));
-    echo ${LS_OUTPUT[4]};
+    LS_OUTPUT=($(ls -n "$1"))
+    echo ${LS_OUTPUT[4]}
 }
 
-FILENAME=$1;
-OUTFILE='/tmp/git-lint/optipng.png';
-origsize=$(get_size $FILENAME);
-rm $OUTFILE 2> /dev/null;
-optipng -out $OUTFILE -o9 $FILENAME > /dev/null 2> /dev/null;
-newsize=$(get_size $OUTFILE);
+FILENAME=$1
+OUTFILE="$(mktemp)"
+ORIGSIZE=$(get_size "$FILENAME")
+rm "$OUTFILE" 2> /dev/null
+optipng -out "$OUTFILE" -o9 "$FILENAME" > /dev/null 2> /dev/null
+NEWSIZE=$(get_size "$OUTFILE")
+rm "$OUTFILE" 2> /dev/null
 
-if [ $newsize -gt 0 ] && [ $newsize -lt $origsize ]; then
-    reduction=`bc <<< "scale = 2; (100*($origsize - $newsize) / $origsize)"`;
-    echo "The file size can be losslessly reduced from $origsize to $newsize bytes. ($reduction% filesize reduction)";
-    echo "Use: optipng -o9 $FILENAME";
-    exit 1;
+if [ "$NEWSIZE" != "" ] && [ "$NEWSIZE" -gt 0 ] && [ "$NEWSIZE" -lt "$ORIGSIZE" ]; then
+    REDUCTION=$(bc <<< "scale = 2; (100*($ORIGSIZE - $NEWSIZE) / $ORIGSIZE)")
+    echo "The file size can be losslessly reduced from $ORIGSIZE to $NEWSIZE bytes. ($REDUCTION% filesize reduction)"
+    echo "Use: optipng -o9 $FILENAME"
+    exit 1
 fi
