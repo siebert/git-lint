@@ -172,10 +172,11 @@ def lint(filename, lines, config):
       then a field 'skipped' will be set with the reasons. Otherwise, the field
       'comments' will have the messages.
     """
-    _, ext = os.path.splitext(filename)
-    if ext in config:
+    root, ext = os.path.splitext(filename)
+    config_key = ext if ext else os.path.split(root)[1]
+    if config_key in config:
         output = collections.defaultdict(list)
-        for linter in config[ext]:
+        for linter in config[config_key]:
             linter_output = linter(filename, lines)
             for category, values in linter_output[filename].items():
                 output[category].extend(values)
@@ -186,12 +187,12 @@ def lint(filename, lines, config):
                 key=lambda x: (x.get('line', -1), x.get('column', -1)))
 
         return {filename: dict(output)}
-    else:
-        return {
-            filename: {
-                'skipped': [
-                    'no linter is defined or enabled for files'
-                    ' with extension "%s"' % ext
-                ]
-            }
+
+    return {
+        filename: {
+            'skipped': [
+                'no linter is defined or enabled for files'
+                ' with extension or name "%s"' % config_key
+            ]
         }
+    }
