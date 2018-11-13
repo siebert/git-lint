@@ -22,8 +22,8 @@ It supports many filetypes, including:
     among others. See https://github.com/sk-/git-lint for the complete list.
 
 Usage:
-    git-lint [-f|--force] [--no-color] [--json] [--last-commit] [FILENAME ...]
-    git-lint [-t|--tracked] [-f|--force] [--no-color] [--json] [--last-commit]
+    git-lint [-f|--force] [--no-color] [--json] [--ignore=path1,path2] [--last-commit] [FILENAME ...]
+    git-lint [-t|--tracked] [-f|--force] [--no-color] [--json] [--ignore=path1,path2] [--last-commit]
     git-lint -h|--version
 
 Options:
@@ -34,6 +34,7 @@ Options:
     -t --tracked   Lints only tracked files.
     --json         Prints the result as a json string. Useful to use it in
                    conjunction with other tools.
+    --ignore=paths List of comma separated of paths to ignore.
     --last-commit  Checks the last checked-out commit. This is mostly useful
                    when used as: git checkout <revid>; git lint --last-commit.
 """
@@ -217,6 +218,10 @@ def main(argv, stdout=sys.stdout, stderr=sys.stderr):
     if arguments['--last-commit']:
         commit = vcs.last_commit()
 
+    ignore_paths = ()
+    if arguments['--ignore']:
+        ignore_paths = tuple(arguments['--ignore'].split(','))
+
     if arguments['FILENAME']:
         invalid_filenames = find_invalid_filenames(arguments['FILENAME'],
                                                    repository_root)
@@ -240,6 +245,15 @@ def main(argv, stdout=sys.stdout, stderr=sys.stderr):
             repository_root,
             tracked_only=arguments['--tracked'],
             commit=commit)
+
+    ignore_files = []
+    for ignore_path in ignore_paths:
+        for modified_file in modified_files.keys():
+            if "/%s" % ignore_path in modified_file:
+                ignore_files.append(modified_file)
+
+    for key in ignore_files:
+        del modified_files[key]
 
     linter_not_found = False
     files_with_problems = 0
