@@ -115,6 +115,8 @@ pylint:
   extensions:
     - .py
   command: pylint
+  fatal_exits:  # If linter terminates with any of these exit codes, don't filter output but always fail.
+    - 32
   arguments:
     - --rcfile={DEFAULT_CONFIGS}/pylintrc
     - --output-format=text

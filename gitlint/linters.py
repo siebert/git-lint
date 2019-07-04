@@ -55,7 +55,7 @@ def missing_requirements_command(missing_programs, installation_string,
 
 
 # TODO(skreft): add test case for result already in cache.
-def lint_command(name, program, arguments, filter_regex, filename, lines):
+def lint_command(name, program, arguments, fatal_exits, filter_regex, filename, lines):
     """Executes a lint program and filter the output.
 
     Executes the lint tool 'program' with arguments 'arguments' over the file
@@ -66,6 +66,7 @@ def lint_command(name, program, arguments, filter_regex, filename, lines):
       name: string: the name of the linter.
       program: string: lint program.
       arguments: list[string]: extra arguments for the program.
+      fatal_exits: list[int]: report error if linter exit code is in the list.
       filter_regex: string: regular expression to filter lines.
       filename: string: filename to lint.
       lines: list[int]|None: list of lines that we want to capture. If None,
@@ -82,7 +83,16 @@ def lint_command(name, program, arguments, filter_regex, filename, lines):
             output = subprocess.check_output(
                 call_arguments, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as error:
-            output = error.output
+            if error.returncode in fatal_exits:
+                return {
+                    filename: {
+                        'error': [('"%s" returned error code %i.%sOutput:%s%s') %
+                                  (' '.join(call_arguments), error.returncode, os.linesep,
+                                   error.output, os.linesep)]
+                    }
+                }
+            else:
+                output = error.output
         except OSError:
             return {
                 filename: {
@@ -151,7 +161,7 @@ def parse_yaml_config(yaml_config, repo_home):
                                      not_found_programs, data['installation'])
         else:
             linter_command = Partial(lint_command, name, command, arguments,
-                                     data['filter'])
+                                     data.get('fatal_exits', []), data['filter'])
         for extension in data['extensions']:
             config[extension].append(linter_command)
 
