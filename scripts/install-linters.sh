@@ -6,7 +6,7 @@ ${root}/scripts/clean-linters.sh
 
 sudo apt-get update -qq
 sudo apt-get remove rubygems ruby --yes
-sudo apt-get install curl build-essential php-pear optipng pngcrush checkstyle libjpeg-turbo-progs xsltproc cmake --yes
+sudo apt-get install curl build-essential php-pear optipng pngcrush checkstyle doxygen libjpeg-turbo-progs xsltproc cmake --yes
 
 # Ubuntu 14
 if lsb_release -c | grep -q trusty

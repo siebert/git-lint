@@ -396,3 +396,24 @@ cpplint:
     ^{filename}:(?P<line>{lines}): (?P<message>.+) \[(?P<message_id>.+)\]
     \[(?P<severity>\d+)\]
   installation: "Run pip install cpplint."
+
+  # C++ Doxygen
+# Sample output:
+# /foobar.h:37: warning: parameters of member Foo:Bar are not (all) documented
+doxygen:
+  command: doxygen-linter.sh
+  extensions:
+    - .c
+    - .cc
+    - .cpp
+    - .c++
+    - .h
+    - .hpp
+    - .h++
+  arguments:
+    - "{DEFAULT_CONFIGS}/Doxyfile"
+  requirements:
+    - doxygen
+  filter: >-
+    ^{filename}:(?P<line>{lines}): (?P<severity>.+): (?P<message>.+)
+  installation: "Run apt install doxygen."
