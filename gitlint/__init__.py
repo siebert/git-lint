@@ -22,14 +22,15 @@ It supports many filetypes, including:
     among others. See https://github.com/sk-/git-lint for the complete list.
 
 Usage:
-    git-lint [-f|--force] [--no-color] [--json] [--ignore=path1,path2] [--last-commit] [FILENAME ...]
-    git-lint [-t|--tracked] [-f|--force] [--no-color] [--json] [--ignore=path1,path2] [--last-commit]
+    git-lint [-f|--force] [--no-color] [--ide] [--json] [--ignore=path1,path2] [--last-commit] [FILENAME ...]
+    git-lint [-t|--tracked] [-f|--force] [--no-color] [--ide] [--json] [--ignore=path1,path2] [--last-commit]
     git-lint -h|--version
 
 Options:
     -h             Show the usage patterns.
     --version      Prints the version number.
     --no-color     Disable colored output.
+    --ide          Format output for IDE parsing.
     -f --force     Shows all the lines with problems.
     -t --tracked   Lints only tracked files.
     --json         Prints the result as a json string. Useful to use it in
@@ -115,7 +116,7 @@ def format_comment(comment_data):
 
     'line {line}, col {column}: {severity}: [{message_id}]: {message}'
 
-    Any of the fields may nbe absent.
+    Any of the fields may be absent.
 
     Args:
       comment_data: dictionary with the linter data.
@@ -146,6 +147,39 @@ def format_comment(comment_data):
         format_pieces.append('{message}')
 
     return ''.join(format_pieces).format(**comment_data)
+
+
+def format_comment_for_ide(filename, comment_data):
+    """Formats the data returned by the linters for IDE parsing.
+
+    Given a dictionary with the fields: line, column, severity, message_id,
+    message, will generate a message like:
+
+    '<filename>:<line>:<column>:{<severity>}:[<message_id>]:<message>'
+
+    Any but the first three fields may be absent.
+
+    Args:
+      filename: the name of the linted file.
+      comment_data: dictionary with the linter data.
+
+    Returns:
+      a string with the formatted message.
+    """
+    line = "%s:%i:%i:" % (os.path.abspath(filename), comment_data.get('line', 0), comment_data.get('column', 0))
+
+    # Severity and Id information
+    if 'severity' in comment_data:
+        line += '{{{severity}}}:'
+
+    if 'message_id' in comment_data:
+        line += '[{message_id}]:'
+
+    # The message
+    if 'message' in comment_data:
+        line += '{message}'
+
+    return line.format(**comment_data)
 
 
 def get_vcs_root():
@@ -197,6 +231,7 @@ def main(argv, stdout=sys.stdout, stderr=sys.stderr):
         __doc__, argv=argv[1:], version='git-lint v%s' % __VERSION__)
 
     json_output = arguments['--json']
+    ide_output = arguments['--ide']
 
     vcs, repository_root = get_vcs_root()
 
@@ -270,7 +305,7 @@ def main(argv, stdout=sys.stdout, stderr=sys.stderr):
 
             rel_filename = os.path.relpath(filename)
 
-            if not json_output:
+            if not json_output and not ide_output:
                 filename = rel_filename
                 if color:
                     filename = termcolor.colored(filename, attrs=('bold', ))
@@ -281,25 +316,31 @@ def main(argv, stdout=sys.stdout, stderr=sys.stderr):
                 output_lines.extend('%s: %s' % (error, reason)
                                     for reason in result.get('error'))
                 linter_not_found = True
-            if result.get('skipped'):
+            if result.get('skipped') and not ide_output:
                 output_lines.extend('%s: %s' % (skipped, reason)
                                     for reason in result.get('skipped'))
             if not result.get('comments', []):
-                if not output_lines:
+                if not output_lines and not ide_output:
                     output_lines.append(okay)
             else:
                 files_with_problems += 1
                 for data in result['comments']:
-                    formatted_message = format_comment(data)
+                    if ide_output:
+                        formatted_message = format_comment_for_ide(filename, data)
+                    else:
+                        formatted_message = format_comment(data)
                     output_lines.append(formatted_message)
                     data['formatted_message'] = formatted_message
+                if ide_output:
+                    output_lines.extend('%s' % linesep)
 
             if json_output:
                 json_result[filename] = result
             else:
                 output = linesep.join(output_lines)
                 stdout.write(output)
-                stdout.write(linesep + linesep)
+                if not ide_output:
+                    stdout.write(linesep + linesep)
 
     if json_output:
         # Hack to convert to unicode, Python3 returns unicode, wheres Python2
