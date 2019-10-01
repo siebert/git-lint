@@ -22,20 +22,21 @@ It supports many filetypes, including:
     among others. See https://github.com/sk-/git-lint for the complete list.
 
 Usage:
-    git-lint [-f|--force] [--no-color] [--ide] [--json] [--ignore=path1,path2] [--last-commit] [FILENAME ...]
-    git-lint [-t|--tracked] [-f|--force] [--no-color] [--ide] [--json] [--ignore=path1,path2] [--last-commit]
-    git-lint -h|--version
+    git-lint [-nifj] [--ignore=path1,path2] [--config=file] [--last-commit] [FILENAME ...]
+    git-lint [-t] [-nifj] [--ignore=path1,path2] [--config=file] [--last-commit]
+    git-lint -h|-v
 
 Options:
     -h             Show the usage patterns.
-    --version      Prints the version number.
-    --no-color     Disable colored output.
-    --ide          Format output for IDE parsing.
-    -f --force     Shows all the lines with problems.
+    -v --version   Prints the version number.
     -t --tracked   Lints only tracked files.
-    --json         Prints the result as a json string. Useful to use it in
+    -n --no-color  Disable colored output.
+    -i --ide       Format output for IDE parsing.
+    -f --force     Shows all the lines with problems.
+    -j --json      Prints the result as a json string. Useful to use it in
                    conjunction with other tools.
     --ignore=paths List of comma separated of paths to ignore.
+    --config=file  Read configuration from file.
     --last-commit  Checks the last checked-out commit. This is mostly useful
                    when used as: git checkout <revid>; git lint --last-commit.
 """
@@ -86,14 +87,17 @@ def find_invalid_filenames(filenames, repository_root):
     return errors
 
 
-def get_config(repo_root):
-    """Gets the configuration file either from the repository or the default."""
-    config = os.path.join(os.path.dirname(__file__), 'configs', 'config.yaml')
+def get_config(repo_root, config_file):
+    """Gets the configuration file from the parameter, the repository or the default."""
+    if config_file is None:
+        config = os.path.join(os.path.dirname(__file__), 'configs', 'config.yaml')
 
-    if repo_root:
-        repo_config = os.path.join(repo_root, '.gitlint.yaml')
-        if os.path.exists(repo_config):
-            config = repo_config
+        if repo_root:
+            repo_config = os.path.join(repo_root, '.gitlint.yaml')
+            if os.path.exists(repo_config):
+                config = repo_config
+    else:
+        config = config_file
 
     with open(config) as f:
         # We have to read the content first as yaml hangs up when reading from
@@ -257,6 +261,10 @@ def main(argv, stdout=sys.stdout, stderr=sys.stderr):
     if arguments['--ignore']:
         ignore_paths = tuple(arguments['--ignore'].split(','))
 
+    config_file = None
+    if arguments['--config']:
+        config_file = arguments['--config']
+
     if arguments['FILENAME']:
         invalid_filenames = find_invalid_filenames(arguments['FILENAME'],
                                                    repository_root)
@@ -292,7 +300,7 @@ def main(argv, stdout=sys.stdout, stderr=sys.stderr):
 
     linter_not_found = False
     files_with_problems = 0
-    gitlint_config = get_config(repository_root)
+    gitlint_config = get_config(repository_root, config_file)
     json_result = {}
 
     with futures.ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())\
