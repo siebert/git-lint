@@ -184,7 +184,7 @@ def lint(filename, lines, config):
       'comments' will have the messages.
     """
     root, ext = os.path.splitext(filename)
-    config_key = ext if ext else os.path.split(root)[1]
+    config_key = ext if ext and ext in config else os.path.split(root)[1]
     if config_key in config:
         output = collections.defaultdict(list)
         for linter in config[config_key]:
